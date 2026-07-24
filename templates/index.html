@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>B2 Remote</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <main class="remote">
+        <header>
+            <h1>B2 Remote</h1>
+            <p id="status">Connecting…</p>
+        </header>
+
+        <section class="pad" aria-label="Movement controls">
+            <button class="control forward" data-command="forward">▲</button>
+            <button class="control left" data-command="left">◀</button>
+            <button class="control stop" id="stop-button">STOP</button>
+            <button class="control right" data-command="right">▶</button>
+            <button class="control backward" data-command="backward">▼</button>
+        </section>
+
+        <section class="yaw-controls" aria-label="Yaw controls">
+            <button class="control yaw" data-command="yaw_left">↺ Yaw left</button>
+            <button class="control yaw" data-command="yaw_right">Yaw right ↻</button>
+        </section>
+
+        <p class="note">
+            Each press sends one short movement pulse. Holding a button does not repeat.
+        </p>
+    </main>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
