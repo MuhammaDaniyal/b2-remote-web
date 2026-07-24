@@ -4,14 +4,11 @@ const statusElement = document.getElementById("status");
 const commandButtons = [...document.querySelectorAll("[data-command]")];
 const stopButton = document.getElementById("stop-button");
 
-let locked = false;
-let cooldownMs = 900;
+let requestInFlight = false;
+let localCooldownUntil = 0;
 
-function setLocked(value) {
-    locked = value;
-    commandButtons.forEach(button => {
-        button.disabled = value;
-    });
+function setButtonsDisabled(disabled) {
+    commandButtons.forEach(button => { button.disabled = disabled; });
 }
 
 function setStatus(message, state = "") {
@@ -19,49 +16,45 @@ function setStatus(message, state = "") {
     statusElement.dataset.state = state;
 }
 
+function applyStatus(data) {
+    const coolingDown = Date.now() < localCooldownUntil;
+    const disabled = requestInFlight || coolingDown || !data.robot_ready || data.busy;
+    setButtonsDisabled(disabled);
+
+    if (!data.robot_ready) setStatus("Robot not ready", "error");
+    else if (data.busy) setStatus(`Executing ${data.last_command || "command"}…`, "busy");
+    else if (coolingDown) setStatus("Ready shortly…", "busy");
+    else setStatus("Ready", "ready");
+}
+
 async function refreshStatus() {
     try {
         const response = await fetch("/api/status", { cache: "no-store" });
         const data = await response.json();
-
-        cooldownMs = Math.max(data.cooldown_ms || 900, 900);
-
-        if (!data.robot_ready) {
-            setStatus("Robot not ready", "error");
-            setLocked(true);
-        } else if (data.busy) {
-            setStatus(`Executing ${data.last_command || "command"}…`, "busy");
-            setLocked(true);
-        } else if (!locked) {
-            setStatus("Ready", "ready");
-        }
-    } catch (error) {
+        applyStatus(data);
+    } catch (_) {
         setStatus("Controller unreachable", "error");
-        setLocked(true);
+        setButtonsDisabled(true);
     }
 }
 
 async function sendCommand(command) {
-    if (locked) {
-        return;
-    }
-
-    setLocked(true);
+    if (requestInFlight || Date.now() < localCooldownUntil) return;
+    requestInFlight = true;
+    setButtonsDisabled(true);
     setStatus(`Sending ${command}…`, "busy");
 
     try {
         const response = await fetch("/api/command", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ command }),
         });
-
         const data = await response.json();
 
         if (!response.ok) {
             if (response.status === 429) {
+                localCooldownUntil = Date.now() + Math.max(data.retry_after_ms || 350, 350);
                 setStatus("Rate limited; pause briefly", "error");
             } else if (response.status === 409) {
                 setStatus("Robot is still busy", "busy");
@@ -71,39 +64,35 @@ async function sendCommand(command) {
             return;
         }
 
+        localCooldownUntil = Date.now() + 350;
         setStatus(`Accepted: ${command}`, "busy");
-    } catch (error) {
+    } catch (_) {
         setStatus("Command request failed", "error");
     } finally {
-        window.setTimeout(() => {
-            locked = false;
-            refreshStatus();
-        }, cooldownMs);
+        requestInFlight = false;
+        refreshStatus();
     }
 }
 
 commandButtons.forEach(button => {
-    button.addEventListener("click", () => {
-        sendCommand(button.dataset.command);
-    });
+    button.addEventListener("click", () => sendCommand(button.dataset.command));
 });
 
 stopButton.addEventListener("click", async () => {
-    setLocked(true);
+    requestInFlight = true;
+    setButtonsDisabled(true);
     setStatus("Stopping…", "busy");
-
     try {
         await fetch("/api/stop", { method: "POST" });
+        localCooldownUntil = Date.now() + 250;
         setStatus("Stop sent", "ready");
-    } catch (error) {
+    } catch (_) {
         setStatus("Stop request failed", "error");
     } finally {
-        window.setTimeout(() => {
-            locked = false;
-            refreshStatus();
-        }, 500);
+        requestInFlight = false;
+        refreshStatus();
     }
 });
 
-window.setInterval(refreshStatus, 750);
+window.setInterval(refreshStatus, 250);
 refreshStatus();

@@ -14,12 +14,13 @@ def create_app(interface: str) -> Flask:
 
     controller = B2Controller(interface=interface)
     limiter = CommandRateLimiter(
-        min_interval_seconds=0.75,
-        max_commands_per_window=8,
+        min_interval_seconds=0.5,
+        max_commands_per_window=10,
         window_seconds=10.0,
     )
 
     controller.start()
+    app.extensions["b2_controller"] = controller
     atexit.register(controller.shutdown)
 
     @app.get("/")
@@ -97,13 +98,21 @@ def main() -> None:
         parser.error("Provide the interface or set B2_IFACE.")
 
     app = create_app(args.interface)
-    app.run(
-        host=args.host,
-        port=args.port,
-        debug=False,
-        threaded=True,
-        use_reloader=False,
-    )
+    controller = app.extensions["b2_controller"]
+
+    try:
+        app.run(
+            host=args.host,
+            port=args.port,
+            debug=False,
+            threaded=True,
+            use_reloader=False,
+        )
+    except KeyboardInterrupt:
+        print("\nCtrl+C received; stopping robot and shutting down.")
+    finally:
+        controller.shutdown()
+        print("B2 web remote stopped.")
 
 
 if __name__ == "__main__":

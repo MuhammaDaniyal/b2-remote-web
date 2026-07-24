@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import queue
-import signal
 import threading
 import time
 from dataclasses import dataclass
@@ -28,12 +27,12 @@ class B2Controller:
     """
 
     COMMANDS: Dict[str, MotionPulse] = {
-        "forward": MotionPulse(vx=+0.08, vy=0.00, vyaw=0.00, duration_seconds=0.45),
-        "backward": MotionPulse(vx=-0.08, vy=0.00, vyaw=0.00, duration_seconds=0.45),
-        "left": MotionPulse(vx=0.00, vy=+0.08, vyaw=0.00, duration_seconds=0.45),
-        "right": MotionPulse(vx=0.00, vy=-0.08, vyaw=0.00, duration_seconds=0.45),
-        "yaw_left": MotionPulse(vx=0.00, vy=0.00, vyaw=+0.25, duration_seconds=0.80),
-        "yaw_right": MotionPulse(vx=0.00, vy=0.00, vyaw=-0.25, duration_seconds=0.80),
+        "forward": MotionPulse(vx=+0.15, vy=0.00, vyaw=0.00, duration_seconds=1.00),
+        "backward": MotionPulse(vx=-0.15, vy=0.00, vyaw=0.00, duration_seconds=1.00),
+        "left": MotionPulse(vx=0.00, vy=+0.15, vyaw=0.00, duration_seconds=1.00),
+        "right": MotionPulse(vx=0.00, vy=-0.15, vyaw=0.00, duration_seconds=1.00),
+        "yaw_left": MotionPulse(vx=0.00, vy=0.00, vyaw=+0.35, duration_seconds=1.0),
+        "yaw_right": MotionPulse(vx=0.00, vy=0.00, vyaw=-0.35, duration_seconds=1.0),
     }
 
     def __init__(self, interface: str) -> None:
@@ -47,6 +46,8 @@ class B2Controller:
         self._busy = False
         self._ready = False
         self._last_command: Optional[str] = None
+        self._shutdown_lock = threading.Lock()
+        self._shutdown_complete = False
 
     @property
     def allowed_commands(self):
@@ -90,9 +91,6 @@ class B2Controller:
         )
         self._worker.start()
 
-        signal.signal(signal.SIGINT, self._handle_signal)
-        signal.signal(signal.SIGTERM, self._handle_signal)
-
         print(f"B2 controller ready on {self.interface}; server API {version}")
 
     def enqueue(self, command_name: str) -> Tuple[bool, str]:
@@ -125,6 +123,11 @@ class B2Controller:
         self._safe_stop()
 
     def shutdown(self) -> None:
+        with self._shutdown_lock:
+            if self._shutdown_complete:
+                return
+            self._shutdown_complete = True
+
         self._shutdown.set()
         self.emergency_stop()
 
@@ -132,9 +135,6 @@ class B2Controller:
             self._worker.join(timeout=2.0)
 
         self._ready = False
-
-    def _handle_signal(self, *_args) -> None:
-        self.shutdown()
 
     def _worker_loop(self) -> None:
         while not self._shutdown.is_set():
