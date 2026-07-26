@@ -13,6 +13,21 @@
             <p id="status">Connecting…</p>
         </header>
 
+        <section class="motion-settings" aria-label="Motion settings">
+            <label>
+                Drive speed (m/s)
+                <input id="linear-speed" type="number" min="0.01" max="5" step="0.01" value="0.15" inputmode="decimal">
+            </label>
+            <label>
+                Turn rate (rad/s)
+                <input id="yaw-speed" type="number" min="0.01" max="1" step="0.01" value="0.35" inputmode="decimal">
+            </label>
+            <label>
+                Duration (seconds)
+                <input id="duration" type="number" min="0.01" max="30" step="0.01" value="1" inputmode="decimal">
+            </label>
+        </section>
+
         <section class="pad" aria-label="Movement controls">
             <button class="control forward" data-command="forward">▲</button>
             <button class="control left" data-command="left">◀</button>
@@ -27,7 +42,7 @@
         </section>
 
         <p class="note">
-            Each press sends one short movement pulse. Holding a button does not repeat.
+            Each press sends its current speed and duration with the movement command. Holding a button does not repeat.
         </p>
     </main>
 

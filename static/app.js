@@ -3,6 +3,9 @@
 const statusElement = document.getElementById("status");
 const commandButtons = [...document.querySelectorAll("[data-command]")];
 const stopButton = document.getElementById("stop-button");
+const linearSpeedInput = document.getElementById("linear-speed");
+const yawSpeedInput = document.getElementById("yaw-speed");
+const durationInput = document.getElementById("duration");
 
 let requestInFlight = false;
 let localCooldownUntil = 0;
@@ -42,13 +45,26 @@ async function sendCommand(command) {
     if (requestInFlight || Date.now() < localCooldownUntil) return;
     requestInFlight = true;
     setButtonsDisabled(true);
+
+    const isYawCommand = command.startsWith("yaw_");
+    const speedInput = isYawCommand ? yawSpeedInput : linearSpeedInput;
+    const speed = Number(speedInput.value);
+    const duration_seconds = Number(durationInput.value);
+
+    if (!speedInput.checkValidity() || !durationInput.checkValidity()) {
+        setStatus("Enter values within the shown limits", "error");
+        requestInFlight = false;
+        refreshStatus();
+        return;
+    }
+
     setStatus(`Sending ${command}…`, "busy");
 
     try {
         const response = await fetch("/api/command", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ command }),
+            body: JSON.stringify({ command, speed, duration_seconds }),
         });
         const data = await response.json();
 
@@ -65,7 +81,7 @@ async function sendCommand(command) {
         }
 
         localCooldownUntil = Date.now() + 350;
-        setStatus(`Accepted: ${command}`, "busy");
+        setStatus(`Accepted: ${command} for ${duration_seconds}s`, "busy");
     } catch (_) {
         setStatus("Command request failed", "error");
     } finally {

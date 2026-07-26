@@ -26,6 +26,9 @@ class B2Controller:
     New commands are rejected while one is running or already queued.
     """
 
+    # These define direction and the UI's initial values.  Every enqueued
+    # command receives its own speed and duration, rather than changing a
+    # controller-wide motion setting.
     COMMANDS: Dict[str, MotionPulse] = {
         "forward": MotionPulse(vx=+0.15, vy=0.00, vyaw=0.00, duration_seconds=1.00),
         "backward": MotionPulse(vx=-0.15, vy=0.00, vyaw=0.00, duration_seconds=1.00),
@@ -38,7 +41,7 @@ class B2Controller:
     def __init__(self, interface: str) -> None:
         self.interface = interface
         self.client: Optional[SportClient] = None
-        self._queue: queue.Queue[str] = queue.Queue(maxsize=1)
+        self._queue: queue.Queue[Tuple[str, MotionPulse]] = queue.Queue(maxsize=1)
         self._worker: Optional[threading.Thread] = None
         self._shutdown = threading.Event()
         self._stop_requested = threading.Event()
@@ -93,7 +96,7 @@ class B2Controller:
 
         print(f"B2 controller ready on {self.interface}; server API {version}")
 
-    def enqueue(self, command_name: str) -> Tuple[bool, str]:
+    def enqueue(self, command_name: str, speed: float, duration_seconds: float) -> Tuple[bool, str]:
         if not self._ready or self.client is None:
             return False, "not_ready"
 
@@ -103,8 +106,9 @@ class B2Controller:
         if self.busy or not self._queue.empty():
             return False, "busy"
 
+        pulse = self._pulse_for(command_name, speed, duration_seconds)
         try:
-            self._queue.put_nowait(command_name)
+            self._queue.put_nowait((command_name, pulse))
         except queue.Full:
             return False, "busy"
 
@@ -139,7 +143,7 @@ class B2Controller:
     def _worker_loop(self) -> None:
         while not self._shutdown.is_set():
             try:
-                command_name = self._queue.get(timeout=0.1)
+                command_name, pulse = self._queue.get(timeout=0.1)
             except queue.Empty:
                 continue
 
@@ -148,7 +152,7 @@ class B2Controller:
             self._last_command = command_name
 
             try:
-                self._execute(self.COMMANDS[command_name])
+                self._execute(pulse)
             except Exception as exc:
                 print(f"Command {command_name!r} failed: {exc}")
             finally:
@@ -173,6 +177,16 @@ class B2Controller:
             if self._shutdown.is_set() or self._stop_requested.is_set():
                 break
             time.sleep(0.02)
+
+    def _pulse_for(self, command_name: str, speed: float, duration_seconds: float) -> MotionPulse:
+        """Apply a per-command magnitude while preserving the selected direction."""
+        direction = self.COMMANDS[command_name]
+        return MotionPulse(
+            vx=(1.0 if direction.vx > 0 else -1.0 if direction.vx < 0 else 0.0) * speed,
+            vy=(1.0 if direction.vy > 0 else -1.0 if direction.vy < 0 else 0.0) * speed,
+            vyaw=(1.0 if direction.vyaw > 0 else -1.0 if direction.vyaw < 0 else 0.0) * speed,
+            duration_seconds=duration_seconds,
+        )
 
     def _safe_stop(self) -> None:
         if self.client is None:

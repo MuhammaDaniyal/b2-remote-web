@@ -29,6 +29,38 @@ header {
     margin-bottom: 22px;
 }
 
+.motion-settings {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.motion-settings label {
+    display: grid;
+    gap: 6px;
+    color: #ccc;
+    font-size: 0.75rem;
+}
+
+.motion-settings input {
+    width: 100%;
+    min-height: 40px;
+    border: 1px solid #555;
+    border-radius: 8px;
+    padding: 6px 8px;
+    background: #252525;
+    color: inherit;
+    font: inherit;
+    font-size: 1rem;
+}
+
+@media (max-width: 400px) {
+    .motion-settings {
+        grid-template-columns: 1fr;
+    }
+}
+
 h1 {
     margin: 0 0 8px;
     font-size: 1.6rem;
