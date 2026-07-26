@@ -1,9 +1,10 @@
 "use strict";
 
 const statusElement = document.getElementById("status");
-const commandButtons = [...document.querySelectorAll("[data-command], [data-sit]")];
+const commandButtons = [...document.querySelectorAll("[data-command], [data-sit], [data-stand]")];
 const stopButton = document.getElementById("stop-button");
 const sitButton = document.getElementById("sit-button");
+const standButton = document.getElementById("stand-button");
 const linearSpeedInput = document.getElementById("linear-speed");
 const yawSpeedInput = document.getElementById("yaw-speed");
 const durationInput = document.getElementById("duration");
@@ -97,29 +98,32 @@ commandButtons.forEach(button => {
     }
 });
 
-sitButton.addEventListener("click", async () => {
+async function sendPostureAction(action, label) {
     if (requestInFlight || Date.now() < localCooldownUntil) return;
     requestInFlight = true;
     setButtonsDisabled(true);
-    setStatus("Requesting slow sit…", "busy");
+    setStatus(`Requesting ${label}…`, "busy");
 
     try {
-        const response = await fetch("/api/sit", { method: "POST" });
+        const response = await fetch(`/api/${action}`, { method: "POST" });
         const data = await response.json();
         if (!response.ok) {
-            setStatus(data.error === "busy" ? "Robot is still busy" : (data.error || "Sit request failed"), "error");
+            setStatus(data.error === "busy" ? "Robot is still busy" : (data.error || `${label} request failed`), "error");
             return;
         }
 
         localCooldownUntil = Date.now() + 350;
-        setStatus("Slow sit accepted", "busy");
+        setStatus(`${label} accepted`, "busy");
     } catch (_) {
-        setStatus("Sit request failed", "error");
+        setStatus(`${label} request failed`, "error");
     } finally {
         requestInFlight = false;
         refreshStatus();
     }
-});
+}
+
+sitButton.addEventListener("click", () => sendPostureAction("sit", "slow sit"));
+standButton.addEventListener("click", () => sendPostureAction("stand", "stand up"));
 
 stopButton.addEventListener("click", async () => {
     requestInFlight = true;

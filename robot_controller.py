@@ -116,6 +116,13 @@ class B2Controller:
 
     def enqueue_sit(self) -> Tuple[bool, str]:
         """Queue Unitree's built-in stand-down motion after stopping locomotion."""
+        return self._enqueue_action("sit")
+
+    def enqueue_stand(self) -> Tuple[bool, str]:
+        """Queue Unitree's built-in stand-up motion."""
+        return self._enqueue_action("stand")
+
+    def _enqueue_action(self, action_name: str) -> Tuple[bool, str]:
         if not self._ready or self.client is None:
             return False, "not_ready"
 
@@ -123,7 +130,7 @@ class B2Controller:
             return False, "busy"
 
         try:
-            self._queue.put_nowait(("sit", None))
+            self._queue.put_nowait((action_name, None))
         except queue.Full:
             return False, "busy"
 
@@ -169,13 +176,15 @@ class B2Controller:
             try:
                 if command_name == "sit":
                     self._execute_sit()
+                elif command_name == "stand":
+                    self._execute_stand()
                 else:
                     assert pulse is not None
                     self._execute(pulse)
             except Exception as exc:
                 print(f"Command {command_name!r} failed: {exc}")
             finally:
-                if command_name != "sit":
+                if command_name not in {"sit", "stand"}:
                     self._safe_stop()
                 self._set_busy(False)
                 self._queue.task_done()
@@ -216,6 +225,14 @@ class B2Controller:
         result = self.client.StandDown()
         if result != 0:
             raise RuntimeError(f"StandDown returned {result}")
+
+    def _execute_stand(self) -> None:
+        """Request the robot's native, controlled stand-up motion."""
+        assert self.client is not None
+
+        result = self.client.StandUp()
+        if result != 0:
+            raise RuntimeError(f"StandUp returned {result}")
 
     def _safe_stop(self) -> None:
         if self.client is None:

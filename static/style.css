@@ -139,14 +139,29 @@ h1 {
     font-size: 1rem;
 }
 
-.sit {
+.posture-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 18px;
+}
+
+.sit,
+.stand {
     width: 100%;
     min-height: 58px;
-    margin-top: 18px;
-    background: #243b62;
-    border-color: #41689f;
     font-size: 1rem;
     font-weight: 700;
+}
+
+.sit {
+    background: #243b62;
+    border-color: #41689f;
+}
+
+.stand {
+    background: #245333;
+    border-color: #3f8b54;
 }
 
 .note {
