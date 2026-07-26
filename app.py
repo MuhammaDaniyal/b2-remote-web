@@ -120,6 +120,26 @@ def create_app(interface: str) -> Flask:
         controller.emergency_stop()
         return jsonify({"ok": True})
 
+    @app.post("/api/sit")
+    def sit():
+        allowed, retry_after = limiter.allow(request.remote_addr or "unknown")
+        if not allowed:
+            response = jsonify({
+                "ok": False,
+                "error": "rate_limited",
+                "retry_after_ms": int(retry_after * 1000),
+            })
+            response.status_code = 429
+            response.headers["Retry-After"] = f"{retry_after:.2f}"
+            return response
+
+        accepted, reason = controller.enqueue_sit()
+        if not accepted:
+            status_code = 409 if reason == "busy" else 503
+            return jsonify({"ok": False, "error": reason}), status_code
+
+        return jsonify({"ok": True, "accepted": "sit"}), 202
+
     return app
 
 

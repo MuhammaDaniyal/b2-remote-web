@@ -41,7 +41,7 @@ class B2Controller:
     def __init__(self, interface: str) -> None:
         self.interface = interface
         self.client: Optional[SportClient] = None
-        self._queue: queue.Queue[Tuple[str, MotionPulse]] = queue.Queue(maxsize=1)
+        self._queue: queue.Queue[Tuple[str, Optional[MotionPulse]]] = queue.Queue(maxsize=1)
         self._worker: Optional[threading.Thread] = None
         self._shutdown = threading.Event()
         self._stop_requested = threading.Event()
@@ -114,6 +114,21 @@ class B2Controller:
 
         return True, "accepted"
 
+    def enqueue_sit(self) -> Tuple[bool, str]:
+        """Queue Unitree's built-in stand-down motion after stopping locomotion."""
+        if not self._ready or self.client is None:
+            return False, "not_ready"
+
+        if self.busy or not self._queue.empty():
+            return False, "busy"
+
+        try:
+            self._queue.put_nowait(("sit", None))
+        except queue.Full:
+            return False, "busy"
+
+        return True, "accepted"
+
     def emergency_stop(self) -> None:
         self._stop_requested.set()
 
@@ -152,11 +167,16 @@ class B2Controller:
             self._last_command = command_name
 
             try:
-                self._execute(pulse)
+                if command_name == "sit":
+                    self._execute_sit()
+                else:
+                    assert pulse is not None
+                    self._execute(pulse)
             except Exception as exc:
                 print(f"Command {command_name!r} failed: {exc}")
             finally:
-                self._safe_stop()
+                if command_name != "sit":
+                    self._safe_stop()
                 self._set_busy(False)
                 self._queue.task_done()
 
@@ -187,6 +207,15 @@ class B2Controller:
             vyaw=(1.0 if direction.vyaw > 0 else -1.0 if direction.vyaw < 0 else 0.0) * speed,
             duration_seconds=duration_seconds,
         )
+
+    def _execute_sit(self) -> None:
+        """Request the robot's native, controlled stand-down motion."""
+        assert self.client is not None
+
+        self._safe_stop()
+        result = self.client.StandDown()
+        if result != 0:
+            raise RuntimeError(f"StandDown returned {result}")
 
     def _safe_stop(self) -> None:
         if self.client is None:

@@ -1,8 +1,9 @@
 "use strict";
 
 const statusElement = document.getElementById("status");
-const commandButtons = [...document.querySelectorAll("[data-command]")];
+const commandButtons = [...document.querySelectorAll("[data-command], [data-sit]")];
 const stopButton = document.getElementById("stop-button");
+const sitButton = document.getElementById("sit-button");
 const linearSpeedInput = document.getElementById("linear-speed");
 const yawSpeedInput = document.getElementById("yaw-speed");
 const durationInput = document.getElementById("duration");
@@ -91,7 +92,33 @@ async function sendCommand(command) {
 }
 
 commandButtons.forEach(button => {
-    button.addEventListener("click", () => sendCommand(button.dataset.command));
+    if (button.dataset.command) {
+        button.addEventListener("click", () => sendCommand(button.dataset.command));
+    }
+});
+
+sitButton.addEventListener("click", async () => {
+    if (requestInFlight || Date.now() < localCooldownUntil) return;
+    requestInFlight = true;
+    setButtonsDisabled(true);
+    setStatus("Requesting slow sit…", "busy");
+
+    try {
+        const response = await fetch("/api/sit", { method: "POST" });
+        const data = await response.json();
+        if (!response.ok) {
+            setStatus(data.error === "busy" ? "Robot is still busy" : (data.error || "Sit request failed"), "error");
+            return;
+        }
+
+        localCooldownUntil = Date.now() + 350;
+        setStatus("Slow sit accepted", "busy");
+    } catch (_) {
+        setStatus("Sit request failed", "error");
+    } finally {
+        requestInFlight = false;
+        refreshStatus();
+    }
 });
 
 stopButton.addEventListener("click", async () => {

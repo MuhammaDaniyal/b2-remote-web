@@ -139,6 +139,16 @@ h1 {
     font-size: 1rem;
 }
 
+.sit {
+    width: 100%;
+    min-height: 58px;
+    margin-top: 18px;
+    background: #243b62;
+    border-color: #41689f;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
 .note {
     margin: 18px 0 0;
     color: #aaa;
