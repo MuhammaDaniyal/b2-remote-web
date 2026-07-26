@@ -227,12 +227,12 @@ class B2Controller:
             raise RuntimeError(f"StandDown returned {result}")
 
     def _execute_stand(self) -> None:
-        """Request the robot's native, controlled stand-up motion."""
+        """Recover the B2 to standing after its native stand-down posture."""
         assert self.client is not None
 
-        result = self.client.StandUp()
+        result = self.client.RecoveryStand()
         if result != 0:
-            raise RuntimeError(f"StandUp returned {result}")
+            raise RuntimeError(f"RecoveryStand returned {result}")
 
     def _safe_stop(self) -> None:
         if self.client is None:
