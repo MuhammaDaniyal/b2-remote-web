@@ -13,64 +13,80 @@
             <p id="status">Connecting…</p>
         </header>
 
-        <section class="motion-settings" aria-label="Motion settings">
-            <label>
-                Drive speed (m/s)
-                <input id="linear-speed" type="number" min="0.01" max="5" step="0.01" value="0.15" inputmode="decimal">
-            </label>
-            <label>
-                Turn rate (rad/s)
-                <input id="yaw-speed" type="number" min="0.01" max="1" step="0.01" value="0.35" inputmode="decimal">
-            </label>
-            <label>
-                Duration (seconds)
-                <input id="duration" type="number" min="0.01" max="30" step="0.01" value="1" inputmode="decimal">
-            </label>
-        </section>
+        <div class="remote-columns">
+            <div class="manual-column">
+                <section class="motion-settings" aria-label="Motion settings">
+                    <label>
+                        Drive speed (m/s)
+                        <input id="linear-speed" type="number" min="0.01" max="5" step="0.01" value="0.15" inputmode="decimal">
+                    </label>
+                    <label>
+                        Turn rate (rad/s)
+                        <input id="yaw-speed" type="number" min="0.01" max="1" step="0.01" value="0.35" inputmode="decimal">
+                    </label>
+                    <label>
+                        Duration (seconds)
+                        <input id="duration" type="number" min="0.01" max="30" step="0.01" value="1" inputmode="decimal">
+                    </label>
+                </section>
 
-        <section class="pad" aria-label="Movement controls">
-            <button class="control forward" data-command="forward">▲</button>
-            <button class="control left" data-command="left">◀</button>
-            <button class="control stop" id="stop-button">STOP</button>
-            <button class="control right" data-command="right">▶</button>
-            <button class="control backward" data-command="backward">▼</button>
-        </section>
+                <section class="pad" aria-label="Movement controls">
+                    <button class="control forward" data-command="forward">▲</button>
+                    <button class="control left" data-command="left">◀</button>
+                    <button class="control stop" id="stop-button">STOP</button>
+                    <button class="control right" data-command="right">▶</button>
+                    <button class="control backward" data-command="backward">▼</button>
+                </section>
 
-        <section class="yaw-controls" aria-label="Yaw controls">
-            <button class="control yaw" data-command="yaw_left">↺ Yaw left</button>
-            <button class="control yaw" data-command="yaw_right">Yaw right ↻</button>
-        </section>
+                <section class="yaw-controls" aria-label="Yaw controls">
+                    <button class="control yaw" data-command="yaw_left">↺ Yaw left</button>
+                    <button class="control yaw" data-command="yaw_right">Yaw right ↻</button>
+                </section>
 
-        <section class="posture-controls" aria-label="Posture controls">
-            <button class="control stand" id="stand-button" data-stand>Stand up</button>
-            <button class="control sit" id="sit-button" data-sit>Slow sit</button>
-        </section>
+                <section class="posture-controls" aria-label="Posture controls">
+                    <button class="control stand" id="stand-button" data-stand>Stand up</button>
+                    <button class="control sit" id="sit-button" data-sit>Slow sit</button>
+                </section>
 
-        <section class="path-planner" aria-label="Path Planner">
-            <h2>Path Planner</h2>
-            <div class="path-builder">
-                <select id="path-command-select" class="path-select">
-                    <option value="forward">Forward</option>
-                    <option value="backward">Backward</option>
-                    <option value="left">Left</option>
-                    <option value="right">Right</option>
-                    <option value="yaw_left">Yaw Left</option>
-                    <option value="yaw_right">Yaw Right</option>
-                    <option value="sit">Sit</option>
-                    <option value="stand">Stand</option>
-                </select>
-                <button class="control add-step" id="add-path-step">Add Step</button>
+                <p class="note">
+                    Each press sends its current speed and duration with the movement command. Slow sit uses the robot's built-in controlled stand-down motion.
+                </p>
             </div>
-            <ul id="path-list" class="path-list"></ul>
-            <div class="path-actions">
-                <button class="control clear-path" id="clear-path">Clear</button>
-                <button class="control run-path" id="run-path">Run Path</button>
-            </div>
-        </section>
 
-        <p class="note">
-            Each press sends its current speed and duration with the movement command. Slow sit uses the robot's built-in controlled stand-down motion.
-        </p>
+            <div class="path-column">
+                <section class="path-planner" aria-label="Path Planner">
+                    <h2>Path Planner</h2>
+                    <div class="path-settings">
+                        <label>
+                            Speed (m/s or rad/s)
+                            <input id="path-speed" type="number" min="0.01" max="5" step="0.01" value="0.15" inputmode="decimal">
+                        </label>
+                        <label>
+                            Duration (seconds)
+                            <input id="path-duration" type="number" min="0.01" max="30" step="0.01" value="1" inputmode="decimal">
+                        </label>
+                    </div>
+                    <div class="path-builder">
+                        <select id="path-command-select" class="path-select">
+                            <option value="forward">Forward</option>
+                            <option value="backward">Backward</option>
+                            <option value="left">Left</option>
+                            <option value="right">Right</option>
+                            <option value="yaw_left">Yaw Left</option>
+                            <option value="yaw_right">Yaw Right</option>
+                            <option value="sit">Sit</option>
+                            <option value="stand">Stand</option>
+                        </select>
+                        <button class="control add-step" id="add-path-step">Add Step</button>
+                    </div>
+                    <ul id="path-list" class="path-list"></ul>
+                    <div class="path-actions">
+                        <button class="control clear-path" id="clear-path">Clear</button>
+                        <button class="control run-path" id="run-path">Run Path</button>
+                    </div>
+                </section>
+            </div>
+        </div>
     </main>
 
     <script src="/static/app.js"></script>

@@ -24,6 +24,29 @@ body {
     background: #1b1b1b;
 }
 
+.remote-columns {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+}
+
+@media (min-width: 768px) {
+    .remote {
+        width: min(92vw, 900px);
+    }
+    .remote-columns {
+        grid-template-columns: 1fr 1fr;
+    }
+    .path-planner {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+        border-top: none !important;
+        padding-left: 24px;
+        border-left: 1px solid #333;
+        height: 100%;
+    }
+}
+
 header {
     text-align: center;
     margin-bottom: 22px;
@@ -260,4 +283,30 @@ h1 {
     min-height: 48px;
     font-size: 1rem;
     font-weight: 700;
+}
+
+.path-settings {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.path-settings label {
+    display: grid;
+    gap: 6px;
+    color: #ccc;
+    font-size: 0.75rem;
+}
+
+.path-settings input {
+    width: 100%;
+    min-height: 40px;
+    border: 1px solid #555;
+    border-radius: 8px;
+    padding: 6px 8px;
+    background: #252525;
+    color: inherit;
+    font: inherit;
+    font-size: 1rem;
 }
