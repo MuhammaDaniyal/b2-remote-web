@@ -120,6 +120,50 @@ def create_app(interface: str) -> Flask:
         controller.emergency_stop()
         return jsonify({"ok": True})
 
+    @app.post("/api/path")
+    def path():
+        sequence = request.get_json(silent=True)
+        if not isinstance(sequence, list):
+            return jsonify({"ok": False, "error": "invalid_payload", "message": "Expected a JSON array"}), 400
+
+        valid_commands = controller.allowed_commands.union({"sit", "stand"})
+        
+        for step in sequence:
+            if not isinstance(step, dict):
+                return jsonify({"ok": False, "error": "invalid_step", "message": "Each step must be an object"}), 400
+                
+            command_name = step.get("command")
+            if command_name not in valid_commands:
+                return jsonify({"ok": False, "error": "invalid_command", "message": f"Unknown command: {command_name}"}), 400
+                
+            if command_name not in {"sit", "stand"}:
+                speed = step.get("speed", 0.15)
+                duration = step.get("duration_seconds", 1.0)
+                
+                max_speed = MAX_YAW_SPEED_RADPS if command_name.startswith("yaw_") else MAX_LINEAR_SPEED_MPS
+                if not valid_number(speed, MIN_SPEED, max_speed):
+                    return jsonify({"ok": False, "error": "invalid_speed"}), 400
+                if not valid_number(duration, MIN_DURATION_SECONDS, MAX_DURATION_SECONDS):
+                    return jsonify({"ok": False, "error": "invalid_duration"}), 400
+
+        allowed, retry_after = limiter.allow(request.remote_addr or "unknown")
+        if not allowed:
+            response = jsonify({
+                "ok": False,
+                "error": "rate_limited",
+                "retry_after_ms": int(retry_after * 1000),
+            })
+            response.status_code = 429
+            response.headers["Retry-After"] = f"{retry_after:.2f}"
+            return response
+
+        accepted, reason = controller.enqueue_path(sequence)
+        if not accepted:
+            status_code = 409 if reason == "busy" else 503
+            return jsonify({"ok": False, "error": reason}), status_code
+
+        return jsonify({"ok": True, "accepted": "path", "steps": len(sequence)}), 202
+
     @app.post("/api/sit")
     def sit():
         return enqueue_action("sit", controller.enqueue_sit)

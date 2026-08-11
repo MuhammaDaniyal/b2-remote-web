@@ -14,6 +14,7 @@ let localCooldownUntil = 0;
 
 function setButtonsDisabled(disabled) {
     commandButtons.forEach(button => { button.disabled = disabled; });
+    if (typeof runPathBtn !== 'undefined') runPathBtn.disabled = disabled;
 }
 
 function setStatus(message, state = "") {
@@ -143,3 +144,94 @@ stopButton.addEventListener("click", async () => {
 
 window.setInterval(refreshStatus, 250);
 refreshStatus();
+
+// Path Planner Logic
+const pathSelect = document.getElementById("path-command-select");
+const addPathStepBtn = document.getElementById("add-path-step");
+const pathListEl = document.getElementById("path-list");
+const clearPathBtn = document.getElementById("clear-path");
+const runPathBtn = document.getElementById("run-path");
+
+let currentPath = [];
+
+function renderPathList() {
+    pathListEl.innerHTML = "";
+    currentPath.forEach((step, index) => {
+        const li = document.createElement("li");
+        let text = step.command;
+        if (step.command !== "sit" && step.command !== "stand") {
+            text += ` (${step.speed} ${step.command.startsWith('yaw') ? 'rad/s' : 'm/s'}, ${step.duration_seconds}s)`;
+        }
+        li.textContent = text;
+        
+        const removeBtn = document.createElement("button");
+        removeBtn.textContent = "Remove";
+        removeBtn.className = "remove-step";
+        removeBtn.onclick = () => {
+            currentPath.splice(index, 1);
+            renderPathList();
+        };
+        
+        li.appendChild(removeBtn);
+        pathListEl.appendChild(li);
+    });
+}
+
+addPathStepBtn.addEventListener("click", () => {
+    const cmd = pathSelect.value;
+    const step = { command: cmd };
+    
+    if (cmd !== "sit" && cmd !== "stand") {
+        const isYaw = cmd.startsWith("yaw_");
+        const speedInput = isYaw ? yawSpeedInput : linearSpeedInput;
+        step.speed = Number(speedInput.value);
+        step.duration_seconds = Number(durationInput.value);
+        
+        if (!speedInput.checkValidity() || !durationInput.checkValidity()) {
+            setStatus("Enter values within limits to add to path", "error");
+            return;
+        }
+    }
+    
+    currentPath.push(step);
+    renderPathList();
+});
+
+clearPathBtn.addEventListener("click", () => {
+    currentPath = [];
+    renderPathList();
+});
+
+runPathBtn.addEventListener("click", async () => {
+    if (currentPath.length === 0) {
+        setStatus("Path is empty", "error");
+        return;
+    }
+    
+    if (requestInFlight || Date.now() < localCooldownUntil) return;
+    requestInFlight = true;
+    setButtonsDisabled(true);
+    setStatus(`Executing path (${currentPath.length} steps)…`, "busy");
+
+    try {
+        const response = await fetch("/api/path", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(currentPath),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+            setStatus(data.error === "busy" ? "Robot is still busy" : (data.error || "Path request failed"), "error");
+            return;
+        }
+
+        localCooldownUntil = Date.now() + 350;
+        setStatus(`Path accepted`, "busy");
+    } catch (_) {
+        setStatus("Path request failed", "error");
+    } finally {
+        requestInFlight = false;
+        refreshStatus();
+    }
+});

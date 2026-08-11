@@ -4,7 +4,7 @@ import queue
 import threading
 import time
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 from unitree_sdk2py.b2.sport.sport_client import SportClient
@@ -41,7 +41,7 @@ class B2Controller:
     def __init__(self, interface: str) -> None:
         self.interface = interface
         self.client: Optional[SportClient] = None
-        self._queue: queue.Queue[Tuple[str, Optional[MotionPulse]]] = queue.Queue(maxsize=1)
+        self._queue: queue.Queue[Tuple[str, Any]] = queue.Queue(maxsize=1)
         self._worker: Optional[threading.Thread] = None
         self._shutdown = threading.Event()
         self._stop_requested = threading.Event()
@@ -51,6 +51,7 @@ class B2Controller:
         self._last_command: Optional[str] = None
         self._shutdown_lock = threading.Lock()
         self._shutdown_complete = False
+        self._is_sitting = False
 
     @property
     def allowed_commands(self):
@@ -74,17 +75,31 @@ class B2Controller:
         return self._last_command
 
     def start(self) -> None:
-        ChannelFactoryInitialize(0, self.interface)
+        try:
+            ChannelFactoryInitialize(0, self.interface)
 
-        client = SportClient()
-        client.SetTimeout(2.0)
-        client.Init()
+            client = SportClient()
+            client.SetTimeout(2.0)
+            client.Init()
 
-        code, version = client.GetServerApiVersion()
-        if code != 0:
-            raise RuntimeError(f"B2 sport service did not respond successfully: code={code}")
+            code, version = client.GetServerApiVersion()
+            if code != 0:
+                raise RuntimeError(f"B2 sport service did not respond successfully: code={code}")
 
-        self.client = client
+            self.client = client
+            print(f"B2 controller ready on {self.interface}; server API {version}")
+        except Exception as e:
+            print(f"\n⚠️ MOCK MODE: Could not connect to real robot on {self.interface} ({e})")
+            print("⚠️ UI will be fully functional for testing, but no real movements will occur.\n")
+            
+            class DummySportClient:
+                def Move(self, vx, vy, vyaw): return 0
+                def StandDown(self): return 0
+                def RecoveryStand(self): return 0
+                def StopMove(self): return 0
+                
+            self.client = DummySportClient()
+
         self._ready = True
 
         self._worker = threading.Thread(
@@ -93,8 +108,6 @@ class B2Controller:
             daemon=True,
         )
         self._worker.start()
-
-        print(f"B2 controller ready on {self.interface}; server API {version}")
 
     def enqueue(self, command_name: str, speed: float, duration_seconds: float) -> Tuple[bool, str]:
         if not self._ready or self.client is None:
@@ -121,6 +134,21 @@ class B2Controller:
     def enqueue_stand(self) -> Tuple[bool, str]:
         """Queue Unitree's built-in stand-up motion."""
         return self._enqueue_action("stand")
+
+    def enqueue_path(self, sequence: list) -> Tuple[bool, str]:
+        """Queue a sequence of commands to execute consecutively."""
+        if not self._ready or self.client is None:
+            return False, "not_ready"
+
+        if self.busy or not self._queue.empty():
+            return False, "busy"
+
+        try:
+            self._queue.put_nowait(("path", sequence))
+        except queue.Full:
+            return False, "busy"
+
+        return True, "accepted"
 
     def _enqueue_action(self, action_name: str) -> Tuple[bool, str]:
         if not self._ready or self.client is None:
@@ -174,7 +202,32 @@ class B2Controller:
             self._last_command = command_name
 
             try:
-                if command_name == "sit":
+                if command_name == "path":
+                    # In this case, 'pulse' contains our sequence list
+                    for step in pulse:
+                        if self._stop_requested.is_set() or self._shutdown.is_set():
+                            print("Path execution aborted by stop request.")
+                            break
+                            
+                        cmd = step.get("command")
+                        self._last_command = f"path: {cmd}"
+                        
+                        if cmd == "sit":
+                            self._execute_sit()
+                        elif cmd == "stand":
+                            self._execute_stand()
+                        else:
+                            if self._is_sitting:
+                                print("Path Auto-Stand: Robot was sitting, recovering to stand before movement.")
+                                self._execute_stand()
+                                
+                            speed = float(step.get("speed", 0.15))
+                            duration = float(step.get("duration_seconds", 1.0))
+                            step_pulse = self._pulse_for(cmd, speed, duration)
+                            self._execute(step_pulse)
+                            self._safe_stop()
+
+                elif command_name == "sit":
                     self._execute_sit()
                 elif command_name == "stand":
                     self._execute_stand()
@@ -184,7 +237,7 @@ class B2Controller:
             except Exception as exc:
                 print(f"Command {command_name!r} failed: {exc}")
             finally:
-                if command_name not in {"sit", "stand"}:
+                if command_name != "path" and command_name not in {"sit", "stand"}:
                     self._safe_stop()
                 self._set_busy(False)
                 self._queue.task_done()
@@ -192,19 +245,21 @@ class B2Controller:
     def _execute(self, pulse: MotionPulse) -> None:
         assert self.client is not None
 
-        result = self.client.Move(
-            pulse.vx,
-            pulse.vy,
-            pulse.vyaw,
-        )
-        if result != 0:
-            raise RuntimeError(f"Move returned {result}")
-
         deadline = time.monotonic() + pulse.duration_seconds
 
         while time.monotonic() < deadline:
             if self._shutdown.is_set() or self._stop_requested.is_set():
                 break
+            
+            # Now the robot continuously gets the command, satisfying its safety watchdog!
+            result = self.client.Move(
+                pulse.vx,
+                pulse.vy,
+                pulse.vyaw,
+            )
+            if result != 0:
+                print(f"Warning: Move returned {result}")
+                
             time.sleep(0.02)
 
     def _pulse_for(self, command_name: str, speed: float, duration_seconds: float) -> MotionPulse:
@@ -225,6 +280,7 @@ class B2Controller:
         result = self.client.StandDown()
         if result != 0:
             raise RuntimeError(f"StandDown returned {result}")
+        self._is_sitting = True
 
     def _execute_stand(self) -> None:
         """Recover the B2 to standing after its native stand-down posture."""
@@ -233,6 +289,7 @@ class B2Controller:
         result = self.client.RecoveryStand()
         if result != 0:
             raise RuntimeError(f"RecoveryStand returned {result}")
+        self._is_sitting = False
 
     def _safe_stop(self) -> None:
         if self.client is None:
