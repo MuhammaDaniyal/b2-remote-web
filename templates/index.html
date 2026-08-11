@@ -46,6 +46,28 @@
             <button class="control sit" id="sit-button" data-sit>Slow sit</button>
         </section>
 
+        <section class="path-planner" aria-label="Path Planner">
+            <h2>Path Planner</h2>
+            <div class="path-builder">
+                <select id="path-command-select" class="path-select">
+                    <option value="forward">Forward</option>
+                    <option value="backward">Backward</option>
+                    <option value="left">Left</option>
+                    <option value="right">Right</option>
+                    <option value="yaw_left">Yaw Left</option>
+                    <option value="yaw_right">Yaw Right</option>
+                    <option value="sit">Sit</option>
+                    <option value="stand">Stand</option>
+                </select>
+                <button class="control add-step" id="add-path-step">Add Step</button>
+            </div>
+            <ul id="path-list" class="path-list"></ul>
+            <div class="path-actions">
+                <button class="control clear-path" id="clear-path">Clear</button>
+                <button class="control run-path" id="run-path">Run Path</button>
+            </div>
+        </section>
+
         <p class="note">
             Each press sends its current speed and duration with the movement command. Slow sit uses the robot's built-in controlled stand-down motion.
         </p>

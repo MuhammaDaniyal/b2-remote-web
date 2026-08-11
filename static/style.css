@@ -171,3 +171,93 @@ h1 {
     font-size: 0.9rem;
     line-height: 1.4;
 }
+
+.path-planner {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid #333;
+}
+
+.path-planner h2 {
+    margin: 0 0 16px;
+    font-size: 1.2rem;
+    text-align: center;
+}
+
+.path-builder {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.path-select {
+    width: 100%;
+    min-height: 48px;
+    border: 1px solid #555;
+    border-radius: 8px;
+    padding: 6px 8px;
+    background: #252525;
+    color: inherit;
+    font: inherit;
+    font-size: 1rem;
+}
+
+.add-step {
+    min-height: 48px;
+    font-size: 1rem;
+}
+
+.path-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 16px;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #333;
+    border-radius: 8px;
+    background: #1e1e1e;
+}
+
+.path-list li {
+    padding: 10px 12px;
+    border-bottom: 1px solid #333;
+    font-size: 0.9rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.path-list li:last-child {
+    border-bottom: none;
+}
+
+.path-list li .remove-step {
+    background: #5a1a1a;
+    border: 1px solid #8a2a2a;
+    color: #fff;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.path-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.clear-path {
+    background: #4a4a4a;
+    min-height: 48px;
+    font-size: 1rem;
+}
+
+.run-path {
+    background: #245333;
+    border-color: #3f8b54;
+    min-height: 48px;
+    font-size: 1rem;
+    font-weight: 700;
+}
