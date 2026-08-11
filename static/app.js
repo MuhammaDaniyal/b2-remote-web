@@ -151,6 +151,8 @@ const addPathStepBtn = document.getElementById("add-path-step");
 const pathListEl = document.getElementById("path-list");
 const clearPathBtn = document.getElementById("clear-path");
 const runPathBtn = document.getElementById("run-path");
+const pathSpeedInput = document.getElementById("path-speed");
+const pathDurationInput = document.getElementById("path-duration");
 
 let currentPath = [];
 
@@ -182,12 +184,10 @@ addPathStepBtn.addEventListener("click", () => {
     const step = { command: cmd };
     
     if (cmd !== "sit" && cmd !== "stand") {
-        const isYaw = cmd.startsWith("yaw_");
-        const speedInput = isYaw ? yawSpeedInput : linearSpeedInput;
-        step.speed = Number(speedInput.value);
-        step.duration_seconds = Number(durationInput.value);
+        step.speed = Number(pathSpeedInput.value);
+        step.duration_seconds = Number(pathDurationInput.value);
         
-        if (!speedInput.checkValidity() || !durationInput.checkValidity()) {
+        if (!pathSpeedInput.checkValidity() || !pathDurationInput.checkValidity()) {
             setStatus("Enter values within limits to add to path", "error");
             return;
         }
