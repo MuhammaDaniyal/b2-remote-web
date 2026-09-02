@@ -34,16 +34,28 @@ body {
     .remote {
         width: min(92vw, 900px);
     }
+
     .remote-columns {
         grid-template-columns: 1fr 1fr;
     }
-    .path-planner {
-        margin-top: 0 !important;
-        padding-top: 0 !important;
-        border-top: none !important;
+
+    .path-column {
         padding-left: 24px;
         border-left: 1px solid #333;
         height: 100%;
+    }
+
+    .path-planner,
+    .planter-controls {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+        border-top: none !important;
+    }
+
+    .path-planner {
+        margin-top: 24px !important;
+        padding-top: 24px !important;
+        border-top: 1px solid #333 !important;
     }
 }
 
@@ -116,11 +128,25 @@ h1 {
     gap: 12px;
 }
 
-.forward { grid-area: forward; }
-.left { grid-area: left; }
-.stop { grid-area: stop; }
-.right { grid-area: right; }
-.backward { grid-area: backward; }
+.forward {
+    grid-area: forward;
+}
+
+.left {
+    grid-area: left;
+}
+
+.stop {
+    grid-area: stop;
+}
+
+.right {
+    grid-area: right;
+}
+
+.backward {
+    grid-area: backward;
+}
 
 .control {
     min-height: 76px;
@@ -309,4 +335,36 @@ h1 {
     color: inherit;
     font: inherit;
     font-size: 1rem;
+}
+
+.planter-ip-row {
+    grid-template-columns: 2fr 1fr;
+    align-items: end;
+}
+
+.set-ip {
+    background: #4a4a4a;
+    min-height: 48px;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.plant {
+    background: #245333;
+    border-color: #3f8b54;
+    min-height: 48px;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.planter-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #7f8c8d;
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 16px;
+    min-height: 48px;
 }

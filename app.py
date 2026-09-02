@@ -4,9 +4,20 @@ import argparse
 import atexit
 import math
 import os
+import logging
 from flask import Flask, jsonify, render_template, request
 
+# Suppress ONLY the spammy request logs for /api/status, but keep other important logs
+class NoStatusFilter(logging.Filter):
+    def filter(self, record):
+        return "/api/status" not in record.getMessage()
+
+log = logging.getLogger('werkzeug')
+log.addFilter(NoStatusFilter())
+log.setLevel(logging.INFO)
+
 from robot_controller import B2Controller
+from planter_controller import PlanterController
 from rate_limiter import CommandRateLimiter
 
 
@@ -31,6 +42,7 @@ def create_app(interface: str) -> Flask:
     app = Flask(__name__)
 
     controller = B2Controller(interface=interface)
+    planter = PlanterController()
     limiter = CommandRateLimiter(
         min_interval_seconds=0.5,
         max_commands_per_window=10,
@@ -60,6 +72,8 @@ def create_app(interface: str) -> Flask:
                 "linear_speed_mps": {"min": MIN_SPEED, "max": MAX_LINEAR_SPEED_MPS},
                 "yaw_speed_radps": {"min": MIN_SPEED, "max": MAX_YAW_SPEED_RADPS},
             },
+            "planter_status": planter.get_status(),
+            "planter_ip": planter.ip,
         })
 
     @app.post("/api/command")
@@ -190,6 +204,23 @@ def create_app(interface: str) -> Flask:
             return jsonify({"ok": False, "error": reason}), status_code
 
         return jsonify({"ok": True, "accepted": action_name}), 202
+
+    @app.post("/api/planter/config")
+    def config_planter():
+        payload = request.get_json(silent=True) or {}
+        ip = payload.get("ip")
+        if not ip:
+            return jsonify({"ok": False, "error": "missing_ip"}), 400
+        planter.set_device(ip)
+        return jsonify({"ok": True, "ip": planter.ip})
+
+    @app.post("/api/planter/plant")
+    def plant_tree():
+        accepted, reason = planter.plant()
+        if not accepted:
+            status_code = 409 if reason == "Already planting" else 400
+            return jsonify({"ok": False, "error": reason}), status_code
+        return jsonify({"ok": True, "accepted": "plant"}), 202
 
     return app
 

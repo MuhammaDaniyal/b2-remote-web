@@ -31,6 +31,31 @@ function applyStatus(data) {
     else if (data.busy) setStatus(`Executing ${data.last_command || "command"}…`, "busy");
     else if (coolingDown) setStatus("Ready shortly…", "busy");
     else setStatus("Ready", "ready");
+
+    if (typeof plantBtn !== 'undefined' && typeof planterStatusSpan !== 'undefined') {
+        const pStatus = data.planter_status;
+        if (pStatus === 'ready') {
+            planterStatusSpan.textContent = "Ready";
+            planterStatusSpan.style.color = "#27ae60";
+            plantBtn.disabled = requestInFlight || coolingDown;
+        } else if (pStatus === 'planting') {
+            planterStatusSpan.textContent = "Planting...";
+            planterStatusSpan.style.color = "#f39c12";
+            plantBtn.disabled = true;
+        } else if (pStatus === 'error') {
+            planterStatusSpan.textContent = "Error";
+            planterStatusSpan.style.color = "#e74c3c";
+            plantBtn.disabled = false;
+        } else {
+            planterStatusSpan.textContent = "Disconnected";
+            planterStatusSpan.style.color = "#7f8c8d";
+            plantBtn.disabled = true;
+        }
+        
+        if (data.planter_ip && typeof planterIpInput !== 'undefined' && !planterIpInput.value) {
+            planterIpInput.value = data.planter_ip;
+        }
+    }
 }
 
 async function refreshStatus() {
@@ -235,3 +260,56 @@ runPathBtn.addEventListener("click", async () => {
         refreshStatus();
     }
 });
+
+// Planter Logic
+const planterIpInput = document.getElementById("planter-ip");
+const setPlanterIpBtn = document.getElementById("set-planter-ip");
+const plantBtn = document.getElementById("plant-button");
+const planterStatusSpan = document.getElementById("planter-status");
+
+if (setPlanterIpBtn) {
+    setPlanterIpBtn.addEventListener("click", async () => {
+        const ip = planterIpInput.value.trim();
+        if (!ip) return;
+        
+        setPlanterIpBtn.disabled = true;
+        try {
+            const response = await fetch("/api/planter/config", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ip }),
+            });
+            if (response.ok) {
+                refreshStatus();
+            } else {
+                alert("Failed to set Planter IP");
+            }
+        } catch (_) {
+            alert("Network error setting IP");
+        } finally {
+            setPlanterIpBtn.disabled = false;
+        }
+    });
+}
+
+if (plantBtn) {
+    plantBtn.addEventListener("click", async () => {
+        if (requestInFlight || Date.now() < localCooldownUntil) return;
+        requestInFlight = true;
+        setButtonsDisabled(true);
+        plantBtn.disabled = true;
+        
+        try {
+            const response = await fetch("/api/planter/plant", { method: "POST" });
+            if (!response.ok) {
+                const data = await response.json();
+                alert(data.error || "Planting request failed");
+            }
+        } catch (_) {
+            alert("Planting network error");
+        } finally {
+            requestInFlight = false;
+            refreshStatus();
+        }
+    });
+}

@@ -54,6 +54,21 @@
             </div>
 
             <div class="path-column">
+                <section class="planter-controls" aria-label="Planter Controls">
+                    <h2>Tree Planter</h2>
+                    <div class="path-settings planter-ip-row">
+                        <label>
+                            Planter IP Address
+                            <input id="planter-ip" type="text" placeholder="10.188.230.29">
+                        </label>
+                        <button class="control set-ip" id="set-planter-ip">Set IP</button>
+                    </div>
+                    <div class="path-actions">
+                        <button class="control plant" id="plant-button" disabled>Plant Tree</button>
+                        <div id="planter-status" class="planter-status">Disconnected</div>
+                    </div>
+                </section>
+
                 <section class="path-planner" aria-label="Path Planner">
                     <h2>Path Planner</h2>
                     <div class="path-settings">
